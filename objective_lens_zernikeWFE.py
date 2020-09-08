@@ -29,7 +29,7 @@ osys.add_optic(m1, distance=f)
 #osys.add_optic(m2, distance=d_pri_sec)
 #osys.add_optic(poppy.ScalarTransmission(name='free space'), distance=f1);
 
-delta = 0* u.um
+delta = 8* u.um
 
 osys.add_detector(pixelscale=0.1*u.um/u.pixel, fov_pixels=256, distance = f+delta)
 
