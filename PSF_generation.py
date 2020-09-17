@@ -23,8 +23,9 @@ save_dir = os.path.join('..','..','Training_Set_Zernike','test_0','rr')
 # If you want (change boolean):
 normalisation = False
 crop = False
+gauss_noise = False
 
-#%% ----------------------------------- FUNCTIONS -----------------------------------------------------
+#%% ----------------------------------- FUNCTIONS ------------------------------------------------------
 
 # Random generation of Zernike coefficients
 def generate_coefficients(wavelenght, wfe_budget):
@@ -34,7 +35,7 @@ def generate_coefficients(wavelenght, wfe_budget):
         coefficients.append( np.random.uniform(low = - term, high = + term) )
     return coefficients
 
-# Distributions of lambda fractions for Zernike coefficients:
+# Distributions of lambda fractions for Zernike coeffs - Choose option:
 def sigmoid_budget(n_coeff):
       # Lambda in m
       wavelength_m = wavelength.value * 1e-9
@@ -46,7 +47,7 @@ def sigmoid_budget(n_coeff):
       # Sigmoid points for wf_error_budget (lambda fractions)
       sigmoid = ampl_0 * (1 / (1 + np.exp( - 0.5 * x ))) + shift_sigm
       sigmoid_sampled = wavelength_m / [round(value) for value in sigmoid[0 : n_points : 4]]
-      sigmoid_sampled[:3] = 0 # no piston and x,y tilts
+      sigmoid_sampled[:3] = 0 # no piston, tip and tilt
       return sigmoid_sampled
 
 def gaussian_budget(n_coeff):
@@ -59,9 +60,9 @@ def gaussian_budget(n_coeff):
       shift_gauss = 1
       # Gaussian
       gaussian = ampl_0 * signal.gaussian(M = n_points, std = standard_deviation) + shift_gauss
-      # Gaussian raising edge points for wf_error_budget (lambda fractions)
+      # Gaussian rising edge points for wf_error_budget (lambda fractions)
       gauss_sampled = wavelength_m / [round(value) for value in gaussian[0 : int(n_points/2) : 2]]
-      gauss_sampled[: 3] = 0 # no piston and x,y tilts
+      gauss_sampled[:3] = 0 # no piston, tip and tilt
       return gauss_sampled
 
 def exponential_budget(n_coeff):
@@ -76,7 +77,7 @@ def exponential_budget(n_coeff):
       exponential = ampl_0 * np.exp(x) + shift_exp
       # Exponential points for wf_error_budget (lambda fractions)
       exp_sampled = wavelength_m / [round(value) for value in exponential[0 : n_points : 4]]
-      exp_sampled[:3] = 0 # no piston and x,y tilts
+      exp_sampled[:3] = 0 # no piston, tip and tilt
       return exp_sampled
 
 # Cut the image in half (in center)
@@ -87,6 +88,21 @@ def crop_in_center(image, crop_size):
   x_center, y_center = n_x // 2 + 1, n_y // 2 + 1
   cropped_image = image[x_center - l : x_center + l, y_center - l : y_center + l]
   return cropped_image
+
+# Gaussian noise
+def gaussian_noise(image):
+      rows = image.shape[0]
+      cols = image.shape[1]
+      # Noise parameters
+      mean = 0
+      standard_deviation = image.max() / 10
+      # Adding gauss noise to image
+      gauss_contribution = np.random.normal(loc = mean, scale = standard_deviation, size = (rows, cols))
+      noisy_image = image + gauss_contribution
+      # Due to noise contribution we might get out of bounds
+      noisy_image_clipped = np.clip(noisy_image, a_min = 0, a_max = 255)
+      return noisy_image_clipped
+      
 
 # Create path if it does not exist yet
 def create_saving_directory(save_path):        
@@ -103,7 +119,7 @@ def init_h5(save_dir):
     group = f.create_group('zernike_psf')  # 1 group
     return f, group
 
-#%% ----------------------------------- PARAMETERS --------------------------------------------------
+#%% ----------------------------------- PARAMETERS ---------------------------------------------------
 
 # Input parameters
 SAMPLING = 0.25               # beam ratio (See: documentation)
@@ -188,10 +204,13 @@ for image_idx in range(n_set):
     else:
           psf_train = psf[0].data
           
-    
     if normalisation:
           
           psf_train = psf_train / np.max(psf_train)
+          
+    if gauss_noise:
+          
+          psf_train = gaussian_noise(psf[0].data)
           
     
     # Show results
