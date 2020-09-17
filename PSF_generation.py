@@ -25,15 +25,15 @@ normalisation = False
 crop = False
 gauss_noise = False
 
-#%% ----------------------------------- FUNCTIONS ------------------------------------------------------
+#%% ----------------------------------- FUNCTIONS -----------------------------------------------------
 
 # Random generation of Zernike coefficients
 def generate_coefficients(wavelenght, wfe_budget):
-    coefficients = []
-    for term in wfe_budget:
-        # Fractions of lambda (terms must be in m)
-        coefficients.append( np.random.uniform(low = - term, high = + term) )
-    return coefficients
+      coefficients = []
+      for term in wfe_budget:
+          # Fractions of lambda (terms must be in m)
+          coefficients.append( np.random.uniform(low = - term, high = + term) )
+      return coefficients
 
 # Distributions of lambda fractions for Zernike coeffs - Choose option:
 def sigmoid_budget(n_coeff):
@@ -43,7 +43,7 @@ def sigmoid_budget(n_coeff):
       n_points = 4 * n_coeff
       x = np.linspace(- n_coeff, + n_coeff, n_points)
       ampl_0 = 1e3
-      shift_sigm = 2
+      shift_sigm = 4
       # Sigmoid points for wf_error_budget (lambda fractions)
       sigmoid = ampl_0 * (1 / (1 + np.exp( - 0.5 * x ))) + shift_sigm
       sigmoid_sampled = wavelength_m / [round(value) for value in sigmoid[0 : n_points : 4]]
@@ -82,22 +82,22 @@ def exponential_budget(n_coeff):
 
 # Cut the image in half (in center)
 def crop_in_center(image, crop_size):
-  n_x = image.shape[1]
-  n_y = image.shape[0]
-  l = crop_size // 2
-  x_center, y_center = n_x // 2 + 1, n_y // 2 + 1
-  cropped_image = image[x_center - l : x_center + l, y_center - l : y_center + l]
-  return cropped_image
+      n_x = image.shape[0]
+      n_y = image.shape[1]
+      l = crop_size // 2
+      x_center, y_center = n_x // 2 + 1, n_y // 2 + 1
+      cropped_image = image[x_center - l : x_center + l, y_center - l : y_center + l]
+      return cropped_image
 
 # Gaussian noise
 def gaussian_noise(image):
       rows = image.shape[0]
-      cols = image.shape[1]
+      columns = image.shape[1]
       # Noise parameters
       mean = 0
       standard_deviation = image.max() / 10
       # Adding gauss noise to image
-      gauss_contribution = np.random.normal(loc = mean, scale = standard_deviation, size = (rows, cols))
+      gauss_contribution = np.random.normal(loc = mean, scale = standard_deviation, size = (rows,columns))
       noisy_image = image + gauss_contribution
       # Due to noise contribution we might get out of bounds
       noisy_image_clipped = np.clip(noisy_image, a_min = 0, a_max = 255)
@@ -106,20 +106,20 @@ def gaussian_noise(image):
 
 # Create path if it does not exist yet
 def create_saving_directory(save_path):        
-        if not os.path.isdir(save_path):
-            os.makedirs(save_path)
+      if not os.path.isdir(save_path):
+          os.makedirs(save_path)
             
 # Create h5 file            
 def init_h5(save_dir):
-    create_saving_directory(save_dir)
-    timestamp = time.strftime("%y%m%d_%H%M%S", time.localtime())
-    name = f'TrainingSet_{timestamp}.h5'
-    filename = os.path.join(save_dir,name)
-    f = h5py.File(filename, 'w')
-    group = f.create_group('zernike_psf')  # 1 group
-    return f, group
+      create_saving_directory(save_dir)
+      timestamp = time.strftime("%y%m%d_%H%M%S", time.localtime())
+      name = f'TrainingSet_{timestamp}.h5'
+      filename = os.path.join(save_dir,name)
+      f = h5py.File(filename, 'w')
+      group = f.create_group('zernike_psf')  # 1 group
+      return f, group
 
-#%% ----------------------------------- PARAMETERS ---------------------------------------------------
+#%% ----------------------------------- PARAMETERS --------------------------------------------------
 
 # Input parameters
 SAMPLING = 0.25               # beam ratio (See: documentation)
@@ -133,7 +133,7 @@ n_pix = 256                   # pixels per side (square detector)
 
 # Other parameters
 radius = NA * fl_obj          # Aperture stop radius
-crop_size = int(n_pix / 2)
+crop_size = int(n_pix / 4)
 
 # Zernike coefficients
 n_coeff = 20
@@ -190,7 +190,6 @@ for image_idx in range(n_set):
           osys.describe()
           print('\n')
           
-    
     #plt.figure(figsize=(12,8))
     psf = osys.calc_psf(wavelength=wavelength, display_intermediates=False, return_intermediates=False)
     
@@ -200,7 +199,7 @@ for image_idx in range(n_set):
     
     if crop:
           
-          psf_train = crop_in_center(psf[0].data, crop_size=crop_size)
+          psf_train = crop_in_center(psf[0].data, crop_size = crop_size)
     else:
           psf_train = psf[0].data
           
@@ -210,7 +209,7 @@ for image_idx in range(n_set):
           
     if gauss_noise:
           
-          psf_train = gaussian_noise(psf[0].data)
+          psf_train = gaussian_noise(psf_train)
           
     
     # Show results
